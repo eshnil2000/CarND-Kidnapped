@@ -11,6 +11,27 @@ X: 0.116
 Y: 0.107
 Yaw: 0.004
 
+## Given a Map with landmark co-ordinates in format x,y,#:
+```
+92.064  -34.777 1
+61.109  -47.132 2
+17.42 -4.5993 3
+-7.1285 -34.54  4
+232.32  32.032  5
+177.43  28.083  6
+```
+## Given a base main.cpp file with websocket connection to simulator [see more details at bottom for type of data passed to/from simulator]
+
+## Given initial parameters
+```
+//Set up parameters here
+  double delta_t = 0.1; // Time elapsed between measurements [sec]
+  double sensor_range = 50; // Sensor range [m]
+
+  double sigma_pos [3] = {0.3, 0.3, 0.01}; // GPS measurement uncertainty [x [m], y [m], theta [rad]]
+  double sigma_landmark [2] = {0.3, 0.3}; // Landma
+```
+
 ## Some key functions implemented in the file particle_filter.cpp:
 
 Initialize Particle filter
@@ -70,7 +91,41 @@ for (int i = 0; i < num_particles; i++) {
   }
 
 ```
-Associate data to Landmarks- find distance 
+update weights of each particle 
+```
+void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
+    std::vector<LandmarkObs> observations, Map map_landmarks) {...}
+```
+In main.cpp
+```
+// receive noisy observation data from the simulator
+// sense_observations in JSON format [{obs_x,obs_y},{obs_x,obs_y},...{obs_x,obs_y}]
+
+vector<LandmarkObs> noisy_observations;
+string sense_observations_x = j[1]["sense_observations_x"];
+string sense_observations_y = j[1]["sense_observations_y"];
+...
+//NOTE: Each reading can contain sensor data from multiple landmarks
+for(int i = 0; i < x_sense.size(); i++)
+          {
+            LandmarkObs obs;
+            obs.x = x_sense[i];
+        obs.y = y_sense[i];
+        noisy_observations.push_back(obs);
+          }
+```
+In particle_filter.cpp
+```
+for (int j = 0; j < predicted.size(); j++) {
+      m_dist = dist(observations[i].x,observations[i].y, predicted[j].x, predicted[j].y);
+
+      if (m_dist < min_dist){
+        min_dist = m_dist;
+        closest_landmark = predicted[j].id;
+      }
+    }
+    observations[i].id = closest_landmark;
+```
 
 
 #### Submission
