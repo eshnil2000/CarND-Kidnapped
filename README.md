@@ -105,6 +105,9 @@ vector<LandmarkObs> noisy_observations;
 string sense_observations_x = j[1]["sense_observations_x"];
 string sense_observations_y = j[1]["sense_observations_y"];
 ...
+```
+In particle_filter.cpp
+```
 //NOTE: Each reading can contain sensor data from multiple landmarks
 for(int i = 0; i < x_sense.size(); i++)
           {
@@ -114,7 +117,7 @@ for(int i = 0; i < x_sense.size(); i++)
         noisy_observations.push_back(obs);
           }
 ```
-In particle_filter.cpp
+In particle_filter.cpp/ dataAssociation function, associate noisy observation to closest landmark
 ```
 for (int j = 0; j < predicted.size(); j++) {
       m_dist = dist(observations[i].x,observations[i].y, predicted[j].x, predicted[j].y);
@@ -124,9 +127,42 @@ for (int j = 0; j < predicted.size(); j++) {
         closest_landmark = predicted[j].id;
       }
     }
+    //
     observations[i].id = closest_landmark;
 ```
+In particle_filter.cpp, in updatewights function
+Find weight of each observation for each particle, multiply out observation probabilities using multivariate gaussian function, this gives probability of observing all these landmarks with the noisy observations, capturing the variations from predicted measurement to observed landmark, making sure to change coordinates from Map reference to vehicle reference
 
+```
+double prob = 1;
+    double prob_j;
+    double obs_w;
+
+    for (int j = 0; j < pred_meas.size(); j++) {
+      int id_min = -1;
+      double min_dist = 99999;
+
+      for (int k = 0; k < observations_map.size(); k++) {
+        double m_dist = dist(pred_meas[j].x, pred_meas[j].y, observations_map[k].x, observations_map[k].y);
+
+        if (m_dist< min_dist){
+          min_dist = m_dist;
+          id_min = k;
+        }
+      }
+
+      if (id_min != -1){
+        // calculate weight for  observation with multivariate Gaussian, using observed values as mean
+        obs_w = ( 1/(2*M_PI*std_landmark[0]*std_landmark[1])) * exp( -( pow(pred_meas[j].x-observations_map[id_min].x,2)/(2*pow(std_landmark[0], 2)) + (pow(pred_meas[j].y-observations_map[id_min].y,2)/(2*pow(std_landmark[1], 2))) ) );
+        prob=prob*obs_w;
+      }
+    }
+
+    weights.push_back(prob);
+    particles[i].weight = prob;
+
+  }
+```
 
 #### Submission
 All you will submit is your completed version of `particle_filter.cpp`, which is located in the `src` directory. You should probably do a `git pull` before submitting to verify that your project passes the most up-to-date version of the grading code (there are some parameters in `src/main.cpp` which govern the requirements on accuracy and run time.)
